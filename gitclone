@@ -1,0 +1,157 @@
+#! /bin/bash
+
+
+input_url=$@
+temp_file="$HOME/.chatter"
+
+
+display_the_usage_of_the_script(){
+clear
+    cat <<EOF
+
+message here regarding how to run the script
+
+# requirements: lynx and dialog
+#
+# This entry is needed in lynx.cfg
+# EXTERNAL:http:gitclone %s
+#
+# location of lynx.cfg usually at
+# $HOME/.lynx/lynx.cfg
+# /etc/lynx/lynx.cfg
+#
+# copy gitclone to $HOME/bin/
+# and 
+# chmod +x gitclone
+# 
+# create a directory
+# $HOME/githubrepo/ 
+# this is where all the repositories will be cloned
+
+while you are in github repository page
+press comma (,) to activate this script
+it would display an input field 
+and prompt you to enter an intelligible directory name to clone the repository in
+
+you would find your cloned repositories in
+$HOME/githubrepo/intelligible_name_you_input/repository_name/
+
+
+ _______________________
+< I know this is silly. >
+ -----------------------
+        \   ^__^
+         \  (oo)\_______
+            (__)\       )\/\
+                ||----w |
+                ||     ||
+
+
+
+
+EOF
+
+    }
+
+
+
+the_number_of_arguments_to_the_script(){
+
+    some_number_here=1
+    
+    if [ $# -ne $some_number_here ]
+    then
+display_the_usage_of_the_script	
+echo "press enter to exit script" #all this is not needed as it is non interactive
+read junk
+exit
+
+    else
+	:
+	fi
+    
+    }
+
+
+
+get_the_url(){
+url_of_file=$input_url
+
+    }
+
+prompt_user(){
+    # show an inputbox  # this dialog part was copy pasted from somebody's github page
+    # thanks
+    
+dialog --title "Inputbox - Name of the directory to put file in" \
+--backtitle "Sub directory name" \
+--inputbox "Enter the name of the directory " 8 60 2>$temp_file 
+
+# get response
+response=$?
+
+name=$(sed 's/ /_/g' <$temp_file)
+
+# make a decision 
+case $response in
+  0)
+      subdirectory_name=$(echo ${name})
+      change_directory
+      clone_repository
+
+        ;;
+  1)
+        echo "Cancel pressed."
+        ;;
+  255)
+   echo "[ESC] key pressed."
+esac
+    }
+
+change_directory(){
+
+    
+url_part=$(echo $url_of_file | awk -F"/" '{print $NF}' | sed 's/_//')
+random_string=$(cat /dev/urandom | tr -dc "a-zA-Z0-9" | fold -w 4 | head -n 1)
+todays_date=$(date +%D | awk -F"/" '{print $3, $1, $2}' | sed 's/ /_/g')
+silly_ifs="_"
+subdirectory_name_final=$subdirectory_name$url_part$random_string$silly_ifs$todays_date
+echo $subdirectory_name_final >> $temp_file
+    
+    cd $HOME/githubrepo/ 
+    mkdir -p $HOME/githubrepo/$subdirectory_name_final
+    if [ $? -eq 0 ]
+    then
+	cd $subdirectory_name_final
+    else
+	echo "failed to make directory"
+	sleep 6s; exit
+	fi
+    
+    }
+
+clone_repository(){
+    present_directory=$(echo $PWD | awk -F"/" '{print $NF}')
+    if [ "$present_directory" = "$subdirectory_name_final" ]
+    then
+       echo "no error in matching" >> $temp_file
+    git clone $url_of_file
+    
+    if [ $? == 0 ]
+    then
+	echo "sucessfully cloned"
+    else
+	echo "could not clone, maybe change into some other directory"
+	fi
+
+    else
+	echo "could not change directory. not cloning. bye" >> $temp_file
+	echo "$PWD" >> $temp_file
+	echo "$present_directory is not equal to $subdirectory_name_final" >> $temp_file
+    fi
+    
+}
+
+the_number_of_arguments_to_the_script $*
+get_the_url
+prompt_user
